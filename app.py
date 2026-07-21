@@ -1,19 +1,27 @@
 import streamlit as st
-
+import sqlite3
+from database import initialize_database, save_daily_report
 from calculations import (
     calculate_choice_commission,
     calculate_marketplace_commission,
-    calculate_net_revenue,
+    calculate_daily_result,
     calculate_terminal_commission,
 )
 
+
 st.set_page_config(
     page_title="Daily Revenue Tracker",
-    page_icon="📊"
+    page_icon="📊",
 )
+
+initialize_database()
 
 st.title("Daily Revenue Tracker")
 st.write("Wprowadź dane z raportu dziennego.")
+
+report_date = st.date_input(
+    "Data raportu",
+)
 
 gross_revenue = st.number_input(
     "Obrót z kasy fiskalnej",
@@ -48,7 +56,7 @@ glovo_revenue = st.number_input(
 )
 
 pyszne_revenue = st.number_input(
-    "Pyszne",
+    "Pyszne.pl",
     min_value=0.0,
     step=10.0,
 )
@@ -65,7 +73,22 @@ choice_online_revenue = st.number_input(
     step=10.0,
 )
 
-if st.button("Oblicz wynik dnia"):
+if st.button("Oblicz i zapisz raport"):
+
+    # Calculate data 
+    reported_marketplace_revenue = (
+        uber_revenue
+        + wolt_revenue
+        + glovo_revenue
+        + pyszne_revenue
+    )
+
+    if reported_marketplace_revenue > gross_revenue:
+        st.error(
+            "Suma sprzedaży marketplace jest większa niż obrót z kasy fiskalnej. Sprawdź poprawność danych."
+        )
+        st.stop()
+
     marketplace_commission = calculate_marketplace_commission(
         uber_revenue=uber_revenue,
         wolt_revenue=wolt_revenue,
@@ -73,20 +96,20 @@ if st.button("Oblicz wynik dnia"):
         pyszne_revenue=pyszne_revenue,
     )
 
-    terminal_commision = calculate_terminal_commission(
+    terminal_commission = calculate_terminal_commission(
         terminal_revenue=terminal_revenue,
     )
 
-    choice_commision = calculate_choice_commission(
+    choice_commission = calculate_choice_commission(
         choice_online_revenue=choice_online_revenue,
     )
 
-    net_revenue = calculate_net_revenue(
+    daily_result = calculate_daily_result(
         gross_revenue=gross_revenue,
         daily_costs=daily_costs,
         marketplace_commission=marketplace_commission,
-        terminal_commission=terminal_commision,
-        choice_commission=choice_commision,
+        terminal_commission=terminal_commission,
+        choice_commission=choice_commission,
     )
 
     st.subheader("Podsumowanie")
@@ -102,30 +125,41 @@ if st.button("Oblicz wynik dnia"):
     )
 
     st.metric(
-        "Prowizja z terminału",
-        f"{terminal_commision:.2f} zł",
+        "Prowizja terminal",
+        f"{terminal_commission:.2f} zł",
     )
 
     st.metric(
-        "Prowizja z płatności Choice Online",
-        f"{choice_commision:.2f} zł",
+        "Prowizja płatności Choice Online",
+        f"{choice_commission:.2f} zł",
     )
 
     st.metric(
         "Wynik po kosztach i prowizjach",
-        f"{net_revenue:.2f} zł",
+        f"{daily_result:.2f} zł",
     )
 
-# Checking the logic of marketplaces revenue data (the markeplaces revenue must not be greater than total revenue)
-reported_channels_revenue = (
-    uber_revenue
-    + wolt_revenue
-    + glovo_revenue
-    + pyszne_revenue
-)
+    # Save report to DB
+    try:
+        save_daily_report(
+            report_date=report_date,
+            gross_revenue=gross_revenue,
+            daily_costs=daily_costs,
+            uber_revenue=uber_revenue,
+            wolt_revenue=wolt_revenue,
+            glovo_revenue=glovo_revenue,
+            pyszne_revenue=pyszne_revenue,
+            terminal_revenue=terminal_revenue,
+            choice_online_revenue=choice_online_revenue,
+            marketplace_commission=marketplace_commission,
+            terminal_commission=terminal_commission,
+            choice_commission=choice_commission,
+            daily_result=gross_revenue,
+        )
 
-if reported_channels_revenue > gross_revenue:
-    st.error(
-        "Suma sprzedaży marketplace jest większa niż obrót z kasy fiskalnej. Sprawdź poprawność danych."
-    )
-    st.stop()
+        st.success("Raport został zapisany.")
+
+    except sqlite3.IntegrityError:
+        st.error(
+            "Raport dla wybranej daty już istnieje."
+        )

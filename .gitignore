@@ -15,6 +15,7 @@ env/
 .streamlit/
 
 # Local databases
+data/
 *.db
 
 # Secrets and environment files

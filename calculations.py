@@ -1,12 +1,12 @@
-
-UBER_RATE = 0.2
-WOLT_RATE = 0.4
-GLOVO_RATE = 0.5
-PYSZNE_RATE = 0.4
+UBER_RATE = 0.20
+WOLT_RATE = 0.40
+GLOVO_RATE = 0.50
+PYSZNE_RATE = 0.40
 TERMINAL_RATE = 0.02
 CHOICE_ONLINE_RATE = 0.02
 
-# Calculate commisions from marketplace's
+
+# Calculate total marketplace commissions
 def calculate_marketplace_commission(
     uber_revenue: float,
     wolt_revenue: float,
@@ -18,22 +18,25 @@ def calculate_marketplace_commission(
         + wolt_revenue * WOLT_RATE
         + glovo_revenue * GLOVO_RATE
         + pyszne_revenue * PYSZNE_RATE
-    ) 
+    )
 
-# Calculate commision from terminal
+
+# Calculate terminal payment commission
 def calculate_terminal_commission(
     terminal_revenue: float,
 ) -> float:
     return terminal_revenue * TERMINAL_RATE
 
-# Сalculate commision from CHOICE ONLINE
+
+# Calculate Choice Online payment commission
 def calculate_choice_commission(
     choice_online_revenue: float,
 ) -> float:
     return choice_online_revenue * CHOICE_ONLINE_RATE
 
-# Calculate final revenue
-def calculate_net_revenue(
+
+# Calculate daily result after costs and commissions
+def calculate_daily_result(
     gross_revenue: float,
     daily_costs: float,
     marketplace_commission: float,
