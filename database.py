@@ -98,3 +98,95 @@ def save_daily_report(
                 daily_result,
             ),
         )
+
+def get_daily_reports() -> list[sqlite3.Row]:
+    with get_connection() as connection:
+        reports = connection.execute(
+            """
+            SELECT
+                id,
+                report_date,
+                gross_revenue,
+                daily_costs,
+                uber_revenue,
+                wolt_revenue,
+                glovo_revenue,
+                pyszne_revenue,
+                terminal_revenue,
+                choice_online_revenue,
+                marketplace_commission,
+                terminal_commission,
+                choice_commission,
+                daily_result,
+                created_at
+            FROM daily_reports
+            ORDER BY report_date DESC
+            """
+        ).fetchall()
+
+    return reports
+
+
+def update_daily_report(
+        report_id: int,
+        report_date: date,
+        gross_revenue: float,
+        daily_costs: float,
+        uber_revenue: float,
+        wolt_revenue: float,
+        glovo_revenue: float,
+        pyszne_revenue: float,
+        terminal_revenue: float,
+        choice_online_revenue: float,
+        marketplace_commission: float,
+        terminal_commission: float,
+        choice_commission: float,
+        daily_result: float,
+) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            """
+            UPDATE daily_reports
+            SET
+                report_date = ?,
+                gross_revenue = ?,
+                daily_costs = ?,
+                uber_revenue = ?,
+                wolt_revenue = ?,
+                glovo_revenue = ?,
+                pyszne_revenue = ?,
+                terminal_revenue = ?,
+                choice_online_revenue = ?,
+                marketplace_commission = ?,
+                terminal_commission = ?,
+                choice_commission = ?,
+                daily_result = ?
+            WHERE id = ?
+            """,
+            (
+                report_date.isoformat(),
+                gross_revenue,
+                daily_costs,
+                uber_revenue,
+                wolt_revenue,
+                glovo_revenue,
+                pyszne_revenue,
+                terminal_revenue,
+                choice_online_revenue,
+                marketplace_commission,
+                terminal_commission,
+                choice_commission,
+                daily_result,
+                report_id,
+            ),
+        )
+
+def delete_daily_report(report_id: int) -> None:
+    with get_connection() as connection:
+        connection.execute(
+            """
+            DELETE FROM daily_reports
+            WHERE id = ?
+            """,
+            (report_id,),
+        )
