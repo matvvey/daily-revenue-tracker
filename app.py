@@ -9,18 +9,9 @@ from database import (
     update_daily_report,
     delete_daily_report,
 )
-from calculations import (
-    calculate_choice_commission,
-    calculate_marketplace_commission,
-    calculate_daily_result,
-    calculate_terminal_commission,
-)
 
-
-st.set_page_config(
-    page_title="Daily Revenue Tracker",
-    page_icon="📊",
-)
+# Page init
+st.set_page_config(page_title="Daily Revenue Tracker", page_icon="📊")
 
 initialize_database()
 
@@ -30,58 +21,56 @@ if "success_message" in st.session_state:
 st.title("Daily Revenue Tracker")
 st.write("Wprowadź dane z raportu dziennego.")
 
-report_date = st.date_input(
-    "Data raportu",
-)
+report_date = st.date_input("Data raportu")
 
-gross_revenue = st.number_input(
-    "Obrót z kasy fiskalnej",
-    min_value=0.0,
-    step=10.0,
-)
+gross_revenue = st.number_input("Obrót z kasy fiskalnej", min_value=0.0, step=10.0)
 
-daily_costs = st.number_input(
-    "Koszty dzienne",
-    min_value=0.0,
-    step=10.0,
-)
+daily_costs = st.number_input("Koszty dzienne", min_value=0.0, step=10.0)
+
+# Render fields
+marketplace_fields = {
+    "uber_revenue": "Uber Eats",
+    "wolt_revenue": "Wolt",
+    "glovo_revenue": "Glovo",
+    "pyszne_revenue": "Pyszne",
+}
+
+payment_fields = {
+    "terminal_revenue": "Terminal",
+    "choice_online_revenue": "Choice Online"
+}
+
+def render_revenue_inputs(
+        fields: dict[str, str],
+        key_prefix: str,
+        initial_values: dict[str, float] | None = None,
+) -> dict[str, float]:
+    values = {}
+    initial_values = initial_values or {}
+
+    for field_name, label in fields.items():
+        values[field_name] = st.number_input(
+            label=label,
+            min_value=0.0,
+            step=10.0,
+            value=float(initial_values.get(field_name, 0.0)),
+            key=f"{key_prefix}{field_name}",
+        )
+        
+    return values
 
 st.subheader("Kanały sprzedaży")
 
-uber_revenue = st.number_input(
-    "Uber Eats",
-    min_value=0.0,
-    step=10.0,
+marketplace_revenues = render_revenue_inputs(
+    marketplace_fields,
+    key_prefix="create_",
 )
 
-wolt_revenue = st.number_input(
-    "Wolt",
-    min_value=0.0,
-    step=10.0,
-)
+st.subheader("Metody płatności")
 
-glovo_revenue = st.number_input(
-    "Glovo",
-    min_value=0.0,
-    step=10.0,
-)
-
-pyszne_revenue = st.number_input(
-    "Pyszne.pl",
-    min_value=0.0,
-    step=10.0,
-)
-
-terminal_revenue = st.number_input(
-    "Terminal",
-    min_value=0.0,
-    step=10.0,
-)
-
-choice_online_revenue = st.number_input(
-    "Choice Online",
-    min_value=0.0,
-    step=10.0,
+payment_revenues = render_revenue_inputs(
+    payment_fields,
+    key_prefix="create_"
 )
 
 if st.button("Oblicz i zapisz raport"):
@@ -91,12 +80,12 @@ if st.button("Oblicz i zapisz raport"):
         result = calculate_report(
             gross_revenue=gross_revenue,
             daily_costs=daily_costs,
-            uber_revenue=uber_revenue,
-            wolt_revenue=wolt_revenue,
-            glovo_revenue=glovo_revenue,
-            pyszne_revenue=pyszne_revenue,
-            terminal_revenue=terminal_revenue,
-            choice_online_revenue=choice_online_revenue,
+            uber_revenue=marketplace_revenues["uber_revenue"],
+            wolt_revenue=marketplace_revenues["wolt_revenue"],
+            glovo_revenue=marketplace_revenues["glovo_revenue"],
+            pyszne_revenue=marketplace_revenues["pyszne_revenue"],
+            terminal_revenue=payment_revenues["terminal_revenue"],
+            choice_online_revenue=payment_revenues["choice_online_revenue"],
         )
     except ValueError as e:
         st.error(str(e))
@@ -112,30 +101,15 @@ if st.button("Oblicz i zapisz raport"):
 
     st.subheader("Podsumowanie")
 
-    st.metric(
-        "Obrót brutto",
-        f"{gross_revenue:.2f} zł",
-    )
+    st.metric("Obrót brutto", f"{gross_revenue:.2f} zł")
 
-    st.metric(
-        "Prowizje marketplace",
-        f"{marketplace_commission:.2f} zł",
-    )
+    st.metric("Prowizje marketplace", f"{marketplace_commission:.2f} zł")
 
-    st.metric(
-        "Prowizja terminal",
-        f"{terminal_commission:.2f} zł",
-    )
+    st.metric("Prowizja terminal", f"{terminal_commission:.2f} zł")
 
-    st.metric(
-        "Prowizja płatności Choice Online",
-        f"{choice_commission:.2f} zł",
-    )
+    st.metric("Prowizja płatności Choice Online", f"{choice_commission:.2f} zł")
 
-    st.metric(
-        "Wynik po kosztach i prowizjach",
-        f"{daily_result:.2f} zł",
-    )
+    st.metric("Wynik po kosztach i prowizjach", f"{daily_result:.2f} zł")
 
     # Save report to DB
     try:
@@ -143,12 +117,12 @@ if st.button("Oblicz i zapisz raport"):
             report_date=report_date,
             gross_revenue=gross_revenue,
             daily_costs=daily_costs,
-            uber_revenue=uber_revenue,
-            wolt_revenue=wolt_revenue,
-            glovo_revenue=glovo_revenue,
-            pyszne_revenue=pyszne_revenue,
-            terminal_revenue=terminal_revenue,
-            choice_online_revenue=choice_online_revenue,
+            uber_revenue=marketplace_revenues["uber_revenue"],
+            wolt_revenue=marketplace_revenues["wolt_revenue"],
+            glovo_revenue=marketplace_revenues["glovo_revenue"],
+            pyszne_revenue=marketplace_revenues["pyszne_revenue"],
+            terminal_revenue=payment_revenues["terminal_revenue"],
+            choice_online_revenue=payment_revenues["choice_online_revenue"],
             marketplace_commission=marketplace_commission,
             terminal_commission=terminal_commission,
             choice_commission=choice_commission,
@@ -208,6 +182,7 @@ if reports:
 
     selected_report = reports_by_id[selected_report_id]
 
+    
     # Form to modify report
     with st.expander("Edytuj raport"):
         with st.form("edit_report_form"):
@@ -234,105 +209,98 @@ if reports:
 
             st.write("Kanały sprzedaży")
 
-            edited_uber_revenue = st.number_input(
-                "Uber Eats",
-                min_value=0.0,
-                step=10.0,
-                value=float(selected_report["uber_revenue"]),
+            edited_marketplace_revenues = render_revenue_inputs(
+                marketplace_fields,
+                key_prefix=f"edit_{selected_report_id}_",
+                initial_values={
+                    "uber_revenue": selected_report["uber_revenue"],
+                    "wolt_revenue": selected_report["wolt_revenue"],
+                    "glovo_revenue": selected_report["glovo_revenue"],
+                    "pyszne_revenue": selected_report["pyszne_revenue"],
+                }
             )
 
-            edited_wolt_revenue = st.number_input(
-                "Wolt",
-                min_value=0.0,
-                step=10.0,
-                value=float(selected_report["wolt_revenue"]),
-            )
+            st.write("Metody płatności")
 
-            edited_glovo_revenue = st.number_input(
-                "Glovo",
-                min_value=0.0,
-                step=10.0,
-                value=float(selected_report["glovo_revenue"]),
-            )
-
-            edited_pyszne_revenue = st.number_input(
-                "Pyszne",
-                min_value=0.0,
-                step=10.0,
-                value=float(selected_report["pyszne_revenue"]),
-            )
-
-            edited_terminal_revenue = st.number_input(
-                "Terminal",
-                min_value=0.0,
-                step=10.0,
-                value=float(selected_report["terminal_revenue"]),
-            )
-
-
-            edited_choice_online_revenue = st.number_input(
-                "Choice Online",
-                min_value=0.0,
-                step=10.0,
-                value=float(selected_report["choice_online_revenue"]),
+            edited_payment_revenues = render_revenue_inputs(
+                fields=payment_fields,
+                key_prefix=f"edit_{selected_report_id}_",
+                initial_values={
+                    "terminal_revenue": selected_report["terminal_revenue"],
+                    "choice_online_revenue": selected_report["choice_online_revenue"]
+                }
             )
 
             update_submitted = st.form_submit_button("Zapisz zmiany")
 
     if update_submitted:
-        edited_marketplace_revenue = (
-            edited_uber_revenue
-            + edited_wolt_revenue
-            + edited_glovo_revenue
-            + edited_pyszne_revenue
-        )
-        if edited_marketplace_revenue > edited_gross_revenue:
-            st.error("Suma sprzedaży marketplace jest większa niż obrót kasy fiskalnej.")
+        try:
+            edited_result = calculate_report(
+                gross_revenue=edited_gross_revenue,
+                daily_costs=edited_daily_costs,
+                uber_revenue=edited_marketplace_revenues[
+                    "uber_revenue"
+                ],
+                wolt_revenue=edited_marketplace_revenues[
+                    "wolt_revenue"
+                ],
+                glovo_revenue=edited_marketplace_revenues[
+                    "glovo_revenue"
+                ],
+                pyszne_revenue=edited_marketplace_revenues[
+                    "pyszne_revenue"
+                ],
+                terminal_revenue=edited_payment_revenues[
+                    "terminal_revenue"
+                ],
+                choice_online_revenue=edited_payment_revenues[
+                    "choice_online_revenue"
+                ],
+            )
+
+        except ValueError as error:
+            st.error(str(error))
+
         else:
-            edited_marketplace_commission = (
-                calculate_marketplace_commission(
-                    uber_revenue=edited_uber_revenue,
-                    wolt_revenue=edited_wolt_revenue,
-                    glovo_revenue=edited_glovo_revenue,
-                    pyszne_revenue=edited_pyszne_revenue,
-                )
-            )
-            edited_terminal_commission = (
-                calculate_terminal_commission(terminal_revenue=edited_terminal_revenue)
-            )
-
-            edited_choice_commission = (
-                calculate_choice_commission(choice_online_revenue=edited_choice_online_revenue)
-            )
-
-            edited_daily_result = calculate_daily_result(
-                    gross_revenue=edited_gross_revenue,
-                    daily_costs=edited_daily_costs,
-                    marketplace_commission=edited_marketplace_commission,
-                    terminal_commission=edited_terminal_commission,
-                    choice_commission=edited_choice_commission,
-                )
-            
             try:
                 update_daily_report(
                     report_id=selected_report_id,
                     report_date=edited_report_date,
                     gross_revenue=edited_gross_revenue,
                     daily_costs=edited_daily_costs,
-                    uber_revenue=edited_uber_revenue,
-                    wolt_revenue=edited_wolt_revenue,
-                    glovo_revenue=edited_glovo_revenue,
-                    pyszne_revenue=edited_pyszne_revenue,
-                    terminal_revenue=edited_terminal_revenue,
-                    choice_online_revenue=edited_choice_online_revenue,
-                    marketplace_commission=edited_marketplace_commission,
-                    terminal_commission=edited_terminal_commission,
-                    choice_commission=edited_choice_commission,
-                    daily_result=edited_daily_result,
+                    uber_revenue=edited_marketplace_revenues[
+                        "uber_revenue"
+                    ],
+                    wolt_revenue=edited_marketplace_revenues[
+                        "wolt_revenue"
+                    ],
+                    glovo_revenue=edited_marketplace_revenues[
+                        "glovo_revenue"
+                    ],
+                    pyszne_revenue=edited_marketplace_revenues[
+                        "pyszne_revenue"
+                    ],
+                    terminal_revenue=edited_payment_revenues[
+                        "terminal_revenue"
+                    ],
+                    choice_online_revenue=edited_payment_revenues[
+                        "choice_online_revenue"
+                    ],
+                    marketplace_commission=edited_result[
+                        "marketplace_commission"
+                    ],
+                    terminal_commission=edited_result[
+                        "terminal_commission"
+                    ],
+                    choice_commission=edited_result[
+                        "choice_commission"
+                    ],
+                    daily_result=edited_result["daily_result"],
                 )
 
                 st.session_state["success_message"] = ("Raport został zaktualizowany.")
                 st.rerun()
+
             except sqlite3.IntegrityError:
                 st.error("Raport dla wybranej daty już istnieje.")
         
