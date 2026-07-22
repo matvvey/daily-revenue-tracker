@@ -1,5 +1,6 @@
 import streamlit as st
 import sqlite3
+from report_service import calculate_report
 from datetime import date
 from database import (
     initialize_database,
@@ -85,42 +86,29 @@ choice_online_revenue = st.number_input(
 
 if st.button("Oblicz i zapisz raport"):
 
-    # Calculate data 
-    reported_marketplace_revenue = (
-        uber_revenue
-        + wolt_revenue
-        + glovo_revenue
-        + pyszne_revenue
-    )
-
-    if reported_marketplace_revenue > gross_revenue:
-        st.error(
-            "Suma sprzedaży marketplace jest większa niż obrót z kasy fiskalnej. Sprawdź poprawność danych."
+    # Calculate data
+    try:
+        result = calculate_report(
+            gross_revenue=gross_revenue,
+            daily_costs=daily_costs,
+            uber_revenue=uber_revenue,
+            wolt_revenue=wolt_revenue,
+            glovo_revenue=glovo_revenue,
+            pyszne_revenue=pyszne_revenue,
+            terminal_revenue=terminal_revenue,
+            choice_online_revenue=choice_online_revenue,
         )
-        st.stop()
+    except ValueError as e:
+        st.error(str(e))
+        st.stop() 
 
-    marketplace_commission = calculate_marketplace_commission(
-        uber_revenue=uber_revenue,
-        wolt_revenue=wolt_revenue,
-        glovo_revenue=glovo_revenue,
-        pyszne_revenue=pyszne_revenue,
-    )
+    marketplace_commission = result["marketplace_commission"]
 
-    terminal_commission = calculate_terminal_commission(
-        terminal_revenue=terminal_revenue,
-    )
+    terminal_commission = result["terminal_commission"]
 
-    choice_commission = calculate_choice_commission(
-        choice_online_revenue=choice_online_revenue,
-    )
+    choice_commission = result["choice_commission"]
 
-    daily_result = calculate_daily_result(
-        gross_revenue=gross_revenue,
-        daily_costs=daily_costs,
-        marketplace_commission=marketplace_commission,
-        terminal_commission=terminal_commission,
-        choice_commission=choice_commission,
-    )
+    daily_result = result["daily_result"]
 
     st.subheader("Podsumowanie")
 
