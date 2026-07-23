@@ -175,7 +175,7 @@ if reports:
     }
 
     selected_report_id = st.selectbox(
-        "Wybierz raport",
+        "Wybierz raport do edycji",
         options=list(reports_by_id.keys()),
         format_func=lambda report_id: reports_by_id[report_id]["report_date"],
     )
@@ -268,33 +268,15 @@ if reports:
                     report_date=edited_report_date,
                     gross_revenue=edited_gross_revenue,
                     daily_costs=edited_daily_costs,
-                    uber_revenue=edited_marketplace_revenues[
-                        "uber_revenue"
-                    ],
-                    wolt_revenue=edited_marketplace_revenues[
-                        "wolt_revenue"
-                    ],
-                    glovo_revenue=edited_marketplace_revenues[
-                        "glovo_revenue"
-                    ],
-                    pyszne_revenue=edited_marketplace_revenues[
-                        "pyszne_revenue"
-                    ],
-                    terminal_revenue=edited_payment_revenues[
-                        "terminal_revenue"
-                    ],
-                    choice_online_revenue=edited_payment_revenues[
-                        "choice_online_revenue"
-                    ],
-                    marketplace_commission=edited_result[
-                        "marketplace_commission"
-                    ],
-                    terminal_commission=edited_result[
-                        "terminal_commission"
-                    ],
-                    choice_commission=edited_result[
-                        "choice_commission"
-                    ],
+                    uber_revenue=edited_marketplace_revenues["uber_revenue"],
+                    wolt_revenue=edited_marketplace_revenues["wolt_revenue"],
+                    glovo_revenue=edited_marketplace_revenues["glovo_revenue"],
+                    pyszne_revenue=edited_marketplace_revenues["pyszne_revenue"],
+                    terminal_revenue=edited_payment_revenues["terminal_revenue"],
+                    choice_online_revenue=edited_payment_revenues["choice_online_revenue"],
+                    marketplace_commission=edited_result["marketplace_commission"],
+                    terminal_commission=edited_result["terminal_commission"],
+                    choice_commission=edited_result["choice_commission"],
                     daily_result=edited_result["daily_result"],
                 )
 
@@ -309,9 +291,16 @@ if reports:
     with st.expander("Usuń raport"):
         st.warning("Usunięcie raportu jest nieodwracalne!")
 
-        confirm_delete = st.checkbox("Potwierdzam usunięcie raportu", key=f"confirm_delete_{selected_report_id}")
-        if st.button("Usuń raport", disabled=not confirm_delete, type="primary"):
-            delete_daily_report(selected_report_id)
+        with st.form(f"delete_report_form_{selected_report_id}"):
+            confirm_delete = st.checkbox("Potwierdzam usunięcie raportu")
 
-            st.session_state["success_message"] = "Raport został usunięty."
-            st.rerun()
+            delete_submitted = st.form_submit_button("Usuń raport", type="primary")
+
+        if delete_submitted:
+            if not confirm_delete:
+                st.error("Potwierdź usunięcie raportu.")
+            else:
+                delete_daily_report(selected_report_id)
+
+                st.session_state["success_message"] = ("Raport został usunięty.")
+                st.rerun()

@@ -4,13 +4,10 @@ from datetime import date
 
 DATABASE_PATH = Path("data") / "daily_revenue.db"
 
-def get_connection() -> sqlite3.Connection:
-    DATABASE_PATH.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
+def get_connection(database_path: Path = DATABASE_PATH) -> sqlite3.Connection:
+    database_path.parent.mkdir(parents=True, exist_ok=True)
 
-    connection = sqlite3.connect(DATABASE_PATH)
+    connection = sqlite3.connect(database_path)
     connection.row_factory = sqlite3.Row
 
     return connection
@@ -188,5 +185,5 @@ def delete_daily_report(report_id: int) -> None:
             DELETE FROM daily_reports
             WHERE id = ?
             """,
-            (report_id,),
+            (report_id),
         )
