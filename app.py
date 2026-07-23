@@ -9,6 +9,8 @@ from database import (
     update_daily_report,
     delete_daily_report,
 )
+from costs_manager.repository import FixedCostRepository
+from costs_manager.ui import render_fixed_costs_manager
 
 # Page init
 st.set_page_config(page_title="Daily Revenue Tracker", page_icon="📊")
@@ -304,3 +306,10 @@ if reports:
 
                 st.session_state["success_message"] = ("Raport został usunięty.")
                 st.rerun()
+
+
+# Create fixed costs repository
+
+fixed_costs_repository = FixedCostRepository()
+st.divider()
+render_fixed_costs_manager(repository=fixed_costs_repository)
