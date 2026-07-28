@@ -19,6 +19,12 @@ MONTH_NAMES = {
         12: "Grudzień",
     }
 
+def _get_next_month(year: int, month: int) -> tuple[int, int]:
+    if month == 12:
+        return year + 1, 1
+
+    return year, month + 1
+
 def _format_cost_option(cost: FixedCost) -> str:
     return (
         f"{cost.name} - "
@@ -68,6 +74,8 @@ def render_fixed_costs_manager(repository: FixedCostRepository) -> None:
     _render_edit_fixed_cost_form(repository=repository, costs=costs)
 
     _render_delete_fixed_cost_form(repository=repository, costs=costs)
+
+    _render_copy_fixed_costs_form(repository=repository, source_year=year, source_month=month)
 
 
 def _render_add_fixed_cost_form(repository:FixedCostRepository, year: int, month: int) -> None:
@@ -131,14 +139,14 @@ def _render_fixed_costs_table(costs: list[FixedCost], year: int, month: int) -> 
         use_container_width=True, 
         hide_index=True,
         column_config={
-            "Kwota miesięczna":st.column_config.NumberColumn(format="%.2f zł"),
+            "Suma":st.column_config.NumberColumn(format="%.2f zł"),
             "Średnio dziennie": st.column_config.NumberColumn(format="%.2f zł")
         }
     )
 
 
 # Edit fixed cost table
-def _render_edit_fixed_cost_form(repository: FixedCostService, costs: list[FixedCost]) -> None:
+def _render_edit_fixed_cost_form(repository: FixedCostRepository, costs: list[FixedCost]) -> None:
     if not costs:
         return
 
@@ -169,25 +177,25 @@ def _render_edit_fixed_cost_form(repository: FixedCostService, costs: list[Fixed
             edited_notes = st.text_area("Notatki", value=selected_cost.notes or "")
 
             submitted = st.form_submit_button("Zapisz zmiany")
-            if submitted:
-                try:
-                    updated_cost = FixedCost(
-                        id=selected_cost.id,
-                        year=selected_cost.year,
-                        month=selected_cost.month,
-                        name=edited_name,
-                        amount=edited_amount,
-                        category=edited_category,
-                        notes=edited_notes or None, 
-                    )
+        if submitted:
+            try:
+                updated_cost = FixedCost(
+                    id=selected_cost.id,
+                    year=selected_cost.year,
+                    month=selected_cost.month,
+                    name=edited_name,
+                    amount=edited_amount,
+                    category=edited_category,
+                    notes=edited_notes or None, 
+                )
 
-                    repository.update(updated_cost)
+                repository.update(updated_cost)
 
-                    st.session_state["success_message"] = "Koszt został zaktualizowany"
-                    st.rerun()
+                st.session_state["success_message"] = "Koszt został zaktualizowany"
+                st.rerun()
 
-                except ValueError as error:
-                    st.error(str(error))
+            except ValueError as error:
+                st.error(str(error))
 
 
 
@@ -213,18 +221,71 @@ def _render_delete_fixed_cost_form(repository: FixedCostRepository, costs: list[
             if submitted:
                 if not confirmation:
                     st.warning("Potwierdź usunięcie kosztu")
-                return
+                    return
 
-            if selected_cost.id is None:
-                st.error("Nie można usunąć kosztu bez ID")
+                if selected_cost.id is None:
+                    st.error("Nie można usunąć kosztu bez ID")
+                    return
+
+                try:
+                    repository.delete(selected_cost.id)
+
+                    st.session_state["success_message"] = "Koszt został usunięty."
+                    st.rerun()
+
+                except ValueError as error:
+                    st.error(str(error))
+
+
+def _render_copy_fixed_costs_form(repository: FixedCostRepository, source_year: int, source_month: int) -> None:
+    default_target_year, default_target_month = _get_next_month(year=source_year, month=source_month)
+
+    with st.expander("Kopiuj koszty do innego miesiąca"):
+        st.write(
+            "Miesiąc źródłowy: "
+            f"{MONTH_NAMES[source_month]} {source_year}"
+        )
+
+        target_month_column, target_year_column = st.columns(2)
+
+        with target_month_column:
+            target_month = st.selectbox(
+                "Miesiąc docelowy",
+                options=list(MONTH_NAMES),
+                index=default_target_month - 1,
+                format_func=lambda value: MONTH_NAMES[value],
+                key="fixed_costs_copy_target_month",
+            )
+
+        with target_year_column:
+            target_year = st.number_input(
+                "Rok docelowy",
+                min_value=2000,
+                max_value=2100,
+                value=default_target_year,
+                step=1,
+                key="fixed_costs_copy_target_year",
+            )
+
+        confirmation = st.checkbox("Potwierdzam skopiowanie kosztów", key="fixed_costs_copy_confirmation")
+
+        copy_button = st.button("Kopiuj koszty", key="copy_fixed_costs_button")
+
+        if copy_button:
+            if not confirmation:
+                st.warning("Potwierdzam skopiowanie kosztów")
                 return
 
             try:
-                repository.delete(selected_cost.id)
+                copied_count = repository.copy_to_month(
+                    source_year=source_year, 
+                    source_month=source_month, 
+                    target_year=int(target_year),
+                    target_month=target_month
+                )
 
-                st.session_state["success_message"] = "Koszt został usunięty."
+                st.session_state["success_message"] = (f"Skopiowano {copied_count} kosztów.")
                 st.rerun()
 
             except ValueError as error:
                 st.error(str(error))
-                

@@ -65,3 +65,38 @@ def test_update_cost_without_id_raises_error(repository: FixedCostRepository) ->
 
     with pytest.raises(ValueError, match="Nie można zaktualizować kosztu bez ID"):
         repository.update(cost)
+
+def test_copy_fixed_costs_to_another_month(repository:FixedCostRepository) -> None:
+    rent = FixedCost(name="Czynsz", amount=10_000.0, category=CostCategory.RENT, year=2026, month=7)
+
+    accounting = FixedCost(name="Księgowość", amount=1_000.0, category=CostCategory.ADMINISTRATION, year=2026, month=7)
+
+    repository.add(rent)
+    repository.add(accounting)
+
+    copied_count = repository.copy_to_month(source_year=2026, source_month=8)
+    copied_cost = repository.get_by_month(year=2026, month=8)
+
+    assert copied_count == 2
+    assert len(copied_count) == 2
+    assert copied_costs[0].id is not None
+    assert copied_costs[0].month == 8
+    assert copied_costs[1].month == 8
+
+def test_copy_to_same_month_raises_error(repository: FixedCostRepository) -> None:
+    cost = FixedCost(name="Czynsz", amount=10_000.0, category=CostCategory.RENT, year=2026, month=7)
+
+    repository.add(cost)
+
+    with pytest.raises(ValueError, match=("Miesiąc źródłowy i docelowy nie mogą być takie same")):
+        repository.copy_to_month(source_year=2026, source_month=7, target_year=2026, target_month=7)
+
+def test_copy_to_non_empty_month_raices_error(repository:FixedCostRepository) -> None:
+    july_cost = FixedCost(name="Czynsz", amount=10_000.0, category=CostCategory.RENT, year=2026, month=7)
+    august_cost = FixedCost(name="Marketing", amount=2_000.0, category=CostCategory.MARKETING, year=2026, month=8)
+
+    repository.add(july_cost)
+    repository.add(august_cost)
+
+    with pytest.raises(ValueError, match="miesiąc docelowy zawiera już koszty"):
+        repository.copy_to_month(source_year=2026, source_month=7, target_year=2026, target_month=8)

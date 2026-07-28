@@ -116,3 +116,54 @@ class FixedCostRepository:
             category=CostCategory(row["category"]),
             notes=row["notes"],
         )
+
+
+    def copy_to_month(self, source_year: int, source_month: int, target_year: int, target_month: int) -> int:
+        if (source_year == target_year and source_month == target_month):
+            raise ValueError("Miesiąc źródłowy i docelowy nie mogą być takie same.")
+
+        with get_connection(self.database_path) as connection:
+            source_rows = connection.execute(
+                """
+                SELECT name, amount, category, notes
+                FROM fixed_costs
+                WHERE year = ? AND month = ?
+                ORDER BY category, name
+                """,
+                (source_year, source_month)
+            ).fetchall()
+
+            if not source_rows:
+                raise ValueError("Brak kosztów do skopiowania.")
+
+            target_count = connection.execute(
+                """
+                SELECT COUNT(*)
+                FROM fixed_costs
+                WHERE year = ? AND month = ?
+                """,
+                (target_year, target_month)
+            ).fetchone()[0]
+
+            if target_count > 0:
+                raise ValueError("Wybrany miesiąc docelowy zawiera już koszty stałe.")
+
+            connection.executemany(
+                """
+                INSERT INTO fixed_costs (
+                    year,
+                    month,
+                    name,
+                    amount,
+                    category,
+                    notes
+                )
+                VALUES (?, ?, ?, ?, ?, ?)
+                """,
+                [
+                    (target_year, target_month, row["name"], row["amount"], row["category"], row["notes"])
+                    for row in source_rows
+                ]
+            )
+
+        return len(source_rows)
